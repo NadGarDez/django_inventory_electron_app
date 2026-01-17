@@ -43,7 +43,7 @@ const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) =>
                     <td key={`${row.id || index}-acciones`} style={{ border: '1px solid #dee2e6', padding: '8px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             <button
-                                onClick={() => onEdit(row.id)}
+                                onClick={() => onEdit(row)}
                                 style={{ ...btnAccionStyle, backgroundColor: '#afe3ffff', color: colores.editar }}
                                 title="Editar"
                             >

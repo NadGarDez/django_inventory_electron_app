@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Table from './components/Table';
 import TableSelector from './components/TableSelector';
+import ModalForm from './components/ModalForm'; // Importamos el modal
 
 const datosEstaticos = {
     existencia: [
@@ -9,84 +10,113 @@ const datosEstaticos = {
         { id: 3, sku: 'PROD-003', nombre: 'Teclado Mecánico', cantidad_actual: 50, precio: 80 },
     ],
     entrada: [
-        { id: 101, fecha: '2026-01-15', producto_nombre: 'Laptop Gamer', cantidad: 5, usuario: 'Admin', observaciones: 'Compra proveedor A' },
+        { id: 101, fecha: '2026-01-15', producto_nombre: 'Laptop Gamer', cantidad: 5, usuario: 'Admin' },
     ],
     salida: [
-        { id: 201, fecha: '2026-01-16', producto_nombre: 'Monitor 24"', cantidad: 2, usuario: 'Vendedor 1', observaciones: 'Venta cliente final' },
+        { id: 201, fecha: '2026-01-16', producto_nombre: 'Monitor 24"', cantidad: 2, usuario: 'Vendedor 1' },
     ]
 };
 
-
 const Main = () => {
     const [tipoActual, setTipoActual] = useState('existencia');
-    const [mostrarFormulario, setMostrarFormulario] = useState(false);
+    const [mostrarModal, setMostrarModal] = useState(false);
+    const [estaCargando, setEstaCargando] = useState(false);
 
-    const alCrear = (registro) => {
-        console.log("Registro guardado:", registro);
-        setMostrarFormulario(false);
+    const [activeRegistro, setActiveRegistro] = useState(null);
+
+    const handleSave = async (datos) => {
+        setEstaCargando(true);
+
+        if (datos.id) {
+            // CASO EDICIÓN (PUT/PATCH)
+            console.log(`Actualizando registro ${datos.id} en Django...`, datos);
+        } else {
+            // CASO CREACIÓN (POST)
+            console.log("Creando nuevo registro en Django...", datos);
+        }
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        } finally {
+            setEstaCargando(false);
+        }
+    };
+
+
+    const editar = (row) => {
+        setActiveRegistro(row);
+        setMostrarModal(true);
     }
-   
-    const cancel = () => {
-        console.log("Acción cancelada");
-        setMostrarFormulario(false);
+
+
+    const crear = () => {
+        setActiveRegistro(null);
+        setMostrarModal(true);
+    }
+
+    const eliminar = (id) => {
+        console.log("Eliminar ID:", id);
     }
 
     return (
         <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',          // Altura fija total
-            backgroundColor: '#1a202c',
-            overflow: 'hidden'        // Evita que el body haga scroll
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            height: '100vh', backgroundColor: '#1a202c', overflow: 'hidden'
         }}>
+            {/* COMPONENTE MODAL */}
+            <ModalForm
+                isOpen={mostrarModal}
+                onClose={() => setMostrarModal(false)}
+                tipo={tipoActual}
+                onSave={handleSave}
+                isLoading={estaCargando}
+                // Pasamos la lista de productos para el Select de transacciones
+                productos={datosEstaticos.existencia}
+                registroAEditar={activeRegistro}
+            />
+
             <div style={{
-                width: '80%',
-                maxWidth: '1000px',
-                maxHeight: '80vh',          // El contenedor blanco tiene altura fija
-                backgroundColor: '#fff',
-                padding: '30px',
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                display: 'flex',         // Flexbox para organizar el interior
-                flexDirection: 'column'
+                width: '80%', maxWidth: '1100px', maxHeight: '85vh',
+                backgroundColor: '#fff', padding: '30px', borderRadius: '12px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column'
             }}>
 
-                {/* Encabezado fijo */}
+                {/* Encabezado */}
                 <div style={{ flexShrink: 0, marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, color: '#2d3748', fontSize: '24px' }}>Inventario</h2>
                     <p style={{ margin: '5px 0 0', color: '#718096', fontSize: '14px' }}>
-                        Gestión de stock y movimientos
+                        Gestión de stock y movimientos (Modelos Django)
                     </p>
                 </div>
 
-                {/* Selector fijo */}
+                {/* Selector con botón de "Nuevo" integrado */}
                 <div style={{ flexShrink: 0 }}>
-                    <TableSelector tipoActual={tipoActual} onChange={setTipoActual} />
+                    <TableSelector
+                        tipoActual={tipoActual}
+                        onChange={setTipoActual}
+                        onAdd={crear}
+                    />
                 </div>
 
-                {/* Contenedor de la Tabla que SI hace scroll */}
+                {/* Contenedor de la Tabla con scroll */}
                 <div style={{
-                    flexGrow: 1,           // Toma todo el espacio disponible
-                    overflowY: 'auto',     // Habilita scroll vertical solo aquí
-                    marginTop: '20px',
-                    border: '1px solid #edf2f7'
+                    flexGrow: 1, overflowY: 'auto', marginTop: '20px',
+                    border: '1px solid #edf2f7', borderRadius: '4px'
                 }}>
-                    <Table data={datosEstaticos[tipoActual]} tipo={tipoActual} alCrear={alCrear} cancel={cancel} mostrarFormulario={mostrarFormulario} />
+                    <Table
+                        data={datosEstaticos[tipoActual]}
+                        tipo={tipoActual}
+                        editar={editar}
+                        eliminar={eliminar}
+                    />
                 </div>
 
-                {/* Footer fijo */}
+                {/* Footer */}
                 <div style={{
-                    marginTop: '20px',
-                    paddingTop: '15px',
-                    borderTop: '1px solid #edf2f7',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    color: '#a0aec0',
-                    fontSize: '12px'
+                    marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #edf2f7',
+                    display: 'flex', justifyContent: 'space-between', color: '#a0aec0', fontSize: '12px'
                 }}>
-                    <span>Estado: Conectado</span>
-                    <span>{datosEstaticos[tipoActual].length} filas cargadas</span>
+                    <span>Módulo: {tipoActual.toUpperCase()}</span>
+                    <span>{datosEstaticos[tipoActual].length} registros encontrados</span>
                 </div>
             </div>
         </div>

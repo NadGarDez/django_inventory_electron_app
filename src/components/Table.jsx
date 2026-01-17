@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
-import RowForm from './RowForm';
+import React from 'react';
 import DataRow from './DataRow';
 
-const Table = ({ data, tipo, mostrarFormulario=false, alCrear, cancel }) => {
-    const [estaCargando, setEstaCargando] = useState(false);
-
+const Table = ({ data, tipo, editar, eliminar }) => {
     const temas = {
         entrada: { headerBg: '#a4fdebff', headerText: '#234e52', accent: '#38a169', rowIdxBg: '#f0fff4' },
         salida: { headerBg: '#fca3a3ff', headerText: '#742a2a', accent: '#e53e3e', rowIdxBg: '#fff5f5' },
@@ -23,18 +20,8 @@ const Table = ({ data, tipo, mostrarFormulario=false, alCrear, cancel }) => {
 
     const columnas = configurarColumnas();
 
-    const handleGuardar = async (nuevoRegistro) => {
-        setEstaCargando(true);
-        setTimeout(() => {
-            alCrear(nuevoRegistro);
-            setEstaCargando(false);
-        }, 1500);
-    };
-
     return (
         <div style={{ fontFamily: 'sans-serif' }}>
-            
-
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
                     <tr>
@@ -56,17 +43,6 @@ const Table = ({ data, tipo, mostrarFormulario=false, alCrear, cancel }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {/* Renderizado Condicional */}
-                    {mostrarFormulario && (
-                        <RowForm
-                            tipo={tipo}
-                            onSave={handleGuardar}
-                            onCancel={cancel}
-                            isLoading={estaCargando}
-                            columnas={columnas}
-                        />
-                    )}
-
                     {data.map((row, index) => (
                         <DataRow
                             key={row.id || index}
@@ -74,8 +50,8 @@ const Table = ({ data, tipo, mostrarFormulario=false, alCrear, cancel }) => {
                             index={index}
                             columnas={columnas}
                             estilo={estilo}
-                            onEdit={(id) => console.log("Editando", id)}
-                            onDelete={(id) => console.log("Borrando", id)}
+                            onEdit={(row) => editar(row)}
+                            onDelete={(id) => eliminar(id)}
                         />
                     ))}
                 </tbody>
