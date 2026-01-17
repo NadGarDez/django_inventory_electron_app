@@ -2,6 +2,8 @@ import React from 'react';
 
 const TableSelector = ({ tipoActual, onChange }) => {
     // Paleta de colores idéntica a la de la Tabla para coherencia total
+
+
     const colores = {
         existencia: {
             primario: '#3182ce', // Azul
