@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 1. Configuración de la instancia base
 const api = axios.create({
-    baseURL: 'http://192.168.1.105/api', // Cambia a localhost si pruebas local
+    baseURL: 'http://localhost/api', // Cambia a localhost si pruebas local
     timeout: 5000,
     headers: {
         'Content-Type': 'application/json',
@@ -50,6 +50,7 @@ export const transaccionesAPI = {
     // Listar historial de movimientos
     listar: async () => {
         const response = await api.get('/transacciones/');
+        console.log("Transacciones API response:", response);
         return response.data;
     },
 
@@ -65,6 +66,7 @@ export const transaccionesAPI = {
 export const existenciasAPI = {
     listar: async () => {
         const response = await api.get('/existencias/');
+        console.log("Existencias obtenidas:", response);
         return response.data;
     }
 };
