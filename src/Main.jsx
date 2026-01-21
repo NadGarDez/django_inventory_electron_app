@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Table from './components/Table';
 import TableSelector from './components/TableSelector';
 import ModalForm from './components/ModalForm';
-// Importamos nuestras funciones de API
-// import { productosAPI, transaccionesAPI, existenciasAPI } from './api'; 
 import { productosAPI , transaccionesAPI, existenciasAPI} from './api/api';
-
+import FeedbackModal from './components/FeedBackModal';
 
 const formatTransactionData = (rawTransaction) => {
     return {
@@ -19,106 +17,125 @@ const formatTransactionData = (rawTransaction) => {
 
 const Main = () => {
     const [tipoActual, setTipoActual] = useState('existencia');
-    const [datos, setDatos] = useState([]); // Estado para los datos de la API
-    const [productosParaSelect, setProductosParaSelect] = useState([]); // Para el modal
+    const [datos, setDatos] = useState([]);
+    const [productosParaSelect, setProductosParaSelect] = useState([]);
     const [mostrarModal, setMostrarModal] = useState(false);
     const [estaCargando, setEstaCargando] = useState(false);
     const [activeRegistro, setActiveRegistro] = useState(null);
 
-    // 1. Función para cargar datos desde Django
+    const [feedback, setFeedback] = useState({
+        isOpen: false,
+        type: 'success',
+        title: '',
+        subtitle: ''
+    });
+
+    const closeFeedback = () => setFeedback({ ...feedback, isOpen: false });
+
     const cargarDatos = async () => {
         setEstaCargando(true);
         try {
             let resultado;
             if (tipoActual === 'existencia') {
                 resultado = await existenciasAPI.listar();
-                // Aprovechamos para actualizar la lista de productos para los selects de los modales
                 setProductosParaSelect(resultado); 
             } else if (tipoActual === 'entrada' || tipoActual === 'salida') {
-                // Si tu API de transacciones devuelve todo junto, filtramos por tipo
                 resultado = await transaccionesAPI.listar(tipoActual.toUpperCase());
-                // console.log(tipoActual)
-                // resultado = transacciones.filter(t => t.tipo === tipoActual.toUpperCase());
             }
-
-            
             setDatos(resultado || []);
         } catch (error) {
-            console.error("Error cargando datos de Django:", error);
-            alert("Error al conectar con el servidor");
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Error de Lectura',
+                subtitle: `No se pudieron obtener los datos de ${tipoActual}. Verifique la API.`
+            });
         } finally {
             setEstaCargando(false);
         }
     };
 
-    // 2. Ejecutar carga cada vez que cambie el tipo (pestaña)
     useEffect(() => {
         cargarDatos();
     }, [tipoActual]);
 
-    // 3. Manejar Guardado (Crear/Editar)
+    // 3. Manejar Guardado (Muestra ÉXITO o ERROR)
     const handleSave = async (datosForm) => {
         setEstaCargando(true);
         try {
             if (datosForm.id) {
-                // EDICIÓN
-                if (tipoActual === 'existencia') {
-                    await productosAPI.actualizar(datosForm.id, datosForm);
-                }
-                // Las transacciones normalmente no se editan, pero podrías añadir la lógica aquí
+                if (tipoActual === 'existencia') await productosAPI.actualizar(datosForm.id, datosForm);
             } else {
-                // CREACIÓN
                 if (tipoActual === 'existencia') {
-                    console.log("Creando producto con datos:", datosForm);
-                    const result = await productosAPI.crear(datosForm);
-                    console.log("Producto creado:", result);
+                    await productosAPI.crear(datosForm);
                 } else {
-                    const formattedTransaction = formatTransactionData(datosForm);
-                    const result = await transaccionesAPI.registrar({
-                        ...formattedTransaction,
-                    });
-                    console.log("Transacción registrada:", result);
+                    await transaccionesAPI.registrar(formatTransactionData(datosForm));
                 }
             }
+            
             setMostrarModal(false);
-            cargarDatos(); // Refrescar la tabla
+            await cargarDatos(); 
+
+            setFeedback({
+                isOpen: true,
+                type: 'success',
+                title: '¡Guardado Correctamente!',
+                subtitle: 'La operación se sincronizó correctamente.'
+            });
+
         } catch (error) {
-            console.error("Error al guardar:", error);
-            alert("No se pudo guardar el registro");
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Error al Procesar',
+                subtitle: 'Hubo un problema al intentar guardar los cambios en la base de datos.'
+            });
         } finally {
             setEstaCargando(false);
         }
     };
 
-    // 4. Eliminar
     const eliminar = async (id) => {
         if (window.confirm("¿Estás seguro de eliminar este registro?")) {
             try {
                 if (tipoActual === 'existencia') {
                     await productosAPI.eliminar(id);
                     cargarDatos();
+                    setFeedback({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Registro Eliminado',
+                        subtitle: 'El ítem ha sido borrado definitivamente.'
+                    });
                 }
             } catch (error) {
-                alert("Error al eliminar");
+                setFeedback({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Error de Eliminación',
+                    subtitle: 'No se tiene permisos o el registro no existe.'
+                });
             }
         }
     };
 
-    const editar = (row) => {
-        setActiveRegistro(row);
-        setMostrarModal(true);
-    };
-
-    const crear = () => {
-        setActiveRegistro(null);
-        setMostrarModal(true);
-    };
+    const editar = (row) => { setActiveRegistro(row); setMostrarModal(true); };
+    const crear = () => { setActiveRegistro(null); setMostrarModal(true); };
 
     return (
         <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center',
             height: '100vh', backgroundColor: '#1a202c', overflow: 'hidden'
         }}>
+            {/* COMPONENTE DE FEEDBACK CONFIGURABLE */}
+            <FeedbackModal 
+                isOpen={feedback.isOpen}
+                onClose={closeFeedback}
+                type={feedback.type}
+                title={feedback.title}
+                subtitle={feedback.subtitle}
+            />
+
             <ModalForm
                 isOpen={mostrarModal}
                 onClose={() => setMostrarModal(false)}
@@ -130,11 +147,10 @@ const Main = () => {
             />
 
             <div style={{
-                width: '90%', maxWidth: '1100px', maxHeight: '85vh',
+                width: '80%', maxWidth: '1100px', maxHeight: '85vh',
                 backgroundColor: '#fff', padding: '30px', borderRadius: '12px',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column'
             }}>
-                {/* Header */}
                 <div style={{ flexShrink: 0, marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, color: '#2d3748', fontSize: '24px' }}>Sistema de Inventario</h2>
                     <p style={{ margin: '5px 0 0', color: '#718096', fontSize: '14px' }}>
@@ -142,17 +158,11 @@ const Main = () => {
                     </p>
                 </div>
 
-                <TableSelector
-                    tipoActual={tipoActual}
-                    onChange={setTipoActual}
-                    onAdd={crear}
-                />
+                <TableSelector tipoActual={tipoActual} onChange={setTipoActual} onAdd={crear} />
 
-                {/* Tabla con datos de la API */}
                 <div style={{
                     flexGrow: 1, overflowY: 'auto', marginTop: '20px',
-                    border: '1px solid #edf2f7', borderRadius: '4px',
-                    position: 'relative'
+                    border: '1px solid #edf2f7', borderRadius: '4px', position: 'relative'
                 }}>
                     {estaCargando && (
                         <div style={{
@@ -163,12 +173,7 @@ const Main = () => {
                             Cargando...
                         </div>
                     )}
-                    <Table
-                        data={datos}
-                        tipo={tipoActual}
-                        editar={editar}
-                        eliminar={eliminar}
-                    />
+                    <Table data={datos} tipo={tipoActual} editar={editar} eliminar={eliminar} />
                 </div>
 
                 <div style={{
