@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Cell from './Cell';
 
 // Estilos unificados para botones
@@ -20,6 +20,16 @@ const colores = {
 };
 
 const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) => {
+
+
+
+    const formattedRow = useMemo(() => {
+       const newRow = { ...row, fecha: new Date(row.fecha).toLocaleDateString() ?? '', ultima_actualizacion: new Date(row.ultima_actualizacion).toLocaleDateString() ?? ''};
+       return newRow;
+    }, [columnas, row]);
+
+    console.log("Rendered Row:", formattedRow);
+
     return (
         <tr className="table-row">
             {/* Índice lateral estilo Excel */}
@@ -60,8 +70,8 @@ const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) =>
                     </td>
                 ) : (
                     <Cell
-                        key={`${row.id || index}-${col.key}`}
-                        value={row[col.key]}
+                        key={`${formattedRow.id || index}-${col.key}`}
+                        value={formattedRow[col.key]}
                     />
                 )
             ))}

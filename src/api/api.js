@@ -48,8 +48,8 @@ export const productosAPI = {
 
 export const transaccionesAPI = {
     // Listar historial de movimientos
-    listar: async () => {
-        const response = await api.get('/transacciones/');
+    listar: async (type) => {
+        const response = await api.get('/transacciones/?tipo=' + type);
         console.log("Transacciones API response:", response);
         return response.data;
     },

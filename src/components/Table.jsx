@@ -12,8 +12,8 @@ const Table = ({ data, tipo, editar, eliminar }) => {
 
     const configurarColumnas = () => {
         let cols = (tipo === 'existencia') 
-            ? [{ key: 'sku', label: 'SKU' }, { key: 'nombre', label: 'Producto' }, { key: 'cantidad_actual', label: 'Stock' }, { key: 'precio', label: 'Precio' }]
-            : [{ key: 'fecha', label: 'Fecha' }, { key: 'producto_nombre', label: 'Producto' }, { key: 'cantidad', label: 'Cant.' }, { key: 'usuario', label: 'User' }];
+            ? [{ key: 'sku', label: 'SKU' }, { key: 'nombre', label: 'Producto' }, { key: 'cantidad', label: 'Stock' }]
+            : [{ key: 'fecha', label: 'Fecha' }, { key: 'producto', label: 'ID del producto' },{ key: 'nombre_producto', label: 'Nbr. del producto' }, { key: 'cantidad', label: 'Cant.' }];
         
         return [...cols, { key: 'acciones', label: 'Acciones' }];
     };

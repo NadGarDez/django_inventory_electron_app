@@ -6,6 +6,17 @@ import ModalForm from './components/ModalForm';
 // import { productosAPI, transaccionesAPI, existenciasAPI } from './api'; 
 import { productosAPI , transaccionesAPI, existenciasAPI} from './api/api';
 
+
+const formatTransactionData = (rawTransaction) => {
+    return {
+        id: rawTransaction.id ?? '',
+        producto: rawTransaction.producto_id,
+        cantidad: rawTransaction.cantidad,
+        tipo: rawTransaction.tipo_transaccion,
+        fecha: rawTransaction.fecha ?? '',
+    };
+};
+
 const Main = () => {
     const [tipoActual, setTipoActual] = useState('existencia');
     const [datos, setDatos] = useState([]); // Estado para los datos de la API
@@ -25,8 +36,9 @@ const Main = () => {
                 setProductosParaSelect(resultado); 
             } else if (tipoActual === 'entrada' || tipoActual === 'salida') {
                 // Si tu API de transacciones devuelve todo junto, filtramos por tipo
-                const transacciones = await transaccionesAPI.listar();
-                resultado = transacciones.filter(t => t.tipo === tipoActual);
+                resultado = await transaccionesAPI.listar(tipoActual.toUpperCase());
+                // console.log(tipoActual)
+                // resultado = transacciones.filter(t => t.tipo === tipoActual.toUpperCase());
             }
 
             
@@ -61,11 +73,11 @@ const Main = () => {
                     const result = await productosAPI.crear(datosForm);
                     console.log("Producto creado:", result);
                 } else {
-                    // Entradas y Salidas
-                    await transaccionesAPI.registrar({
-                        ...datosForm,
-                        tipo: tipoActual // 'entrada' o 'salida'
+                    const formattedTransaction = formatTransactionData(datosForm);
+                    const result = await transaccionesAPI.registrar({
+                        ...formattedTransaction,
                     });
+                    console.log("Transacción registrada:", result);
                 }
             }
             setMostrarModal(false);
