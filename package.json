@@ -2,6 +2,7 @@
   "name": "inventario_electron",
   "version": "0.1.0",
   "private": true,
+  "homepage": "./",
   "main": "main.js",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -19,7 +20,23 @@
     "electron": "electron .",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dist:win": "react-scripts build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.inventario.app",
+    "productName": "Inventario",
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "files": [
+      "build/**/*",
+      "main.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    }
   },
   "eslintConfig": {
     "extends": [
@@ -41,6 +58,7 @@
   },
   "devDependencies": {
     "electron": "^39.2.7",
+    "electron-builder": "^25.1.8",
     "electron-packager": "^17.1.2"
   }
 }

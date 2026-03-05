@@ -1,5 +1,11 @@
 # Getting Started with Create React App
 
+## Descarga de compilación para Windows
+
+Puedes descargar la versión compilada para Windows desde este enlace:
+
+- https://drive.google.com/file/d/1XjwffI_stVbR4Q36pZNVDcrIGrOlYgQ1/view?usp=sharing
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
