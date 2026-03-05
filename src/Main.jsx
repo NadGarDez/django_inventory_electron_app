@@ -5,6 +5,33 @@ import ModalForm from './components/ModalForm';
 import { productosAPI , transaccionesAPI, existenciasAPI} from './api/api';
 import FeedbackModal from './components/FeedBackModal';
 
+const normalizeListResponse = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+};
+
+const normalizeProducto = (item) => ({
+    ...item,
+    producto_timestamp:
+        item?.updated_at ??
+        item?.ultima_actualizacion ??
+        item?.created_at ??
+        item?.fecha ??
+        ''
+});
+
+const normalizeExistencia = (item) => ({
+    ...item,
+    cantidad: item?.cantidad ?? item?.stock_actual ?? 0,
+    ultima_actualizacion:
+        item?.ultima_actualizacion ??
+        item?.updated_at ??
+        item?.created_at ??
+        item?.fecha ??
+        ''
+});
+
 const formatTransactionData = (rawTransaction) => {
     return {
         id: rawTransaction.id ?? '',
@@ -16,7 +43,7 @@ const formatTransactionData = (rawTransaction) => {
 };
 
 const Main = () => {
-    const [tipoActual, setTipoActual] = useState('existencia');
+    const [tipoActual, setTipoActual] = useState('productos');
     const [datos, setDatos] = useState([]);
     const [productosParaSelect, setProductosParaSelect] = useState([]);
     const [mostrarModal, setMostrarModal] = useState(false);
@@ -35,14 +62,23 @@ const Main = () => {
     const cargarDatos = async () => {
         setEstaCargando(true);
         try {
-            let resultado;
-            if (tipoActual === 'existencia') {
-                resultado = await existenciasAPI.listar();
-                setProductosParaSelect(resultado); 
+            if (tipoActual === 'productos') {
+                const resultado = await productosAPI.listar();
+                const productos = normalizeListResponse(resultado).map(normalizeProducto);
+                setDatos(productos);
+                setProductosParaSelect(productos);
+            } else if (tipoActual === 'existencia') {
+                const resultado = await existenciasAPI.listar();
+                const existencias = normalizeListResponse(resultado).map(normalizeExistencia);
+                setDatos(existencias);
             } else if (tipoActual === 'entrada' || tipoActual === 'salida') {
-                resultado = await transaccionesAPI.listar(tipoActual.toUpperCase());
+                const [resultado, productos] = await Promise.all([
+                    transaccionesAPI.listar(tipoActual.toUpperCase()),
+                    productosAPI.listar()
+                ]);
+                setDatos(normalizeListResponse(resultado));
+                setProductosParaSelect(normalizeListResponse(productos).map(normalizeProducto));
             }
-            setDatos(resultado || []);
         } catch (error) {
             setFeedback({
                 isOpen: true,
@@ -63,11 +99,26 @@ const Main = () => {
     const handleSave = async (datosForm) => {
         setEstaCargando(true);
         try {
+            if (tipoActual === 'existencia') {
+                setMostrarModal(false);
+                return;
+            }
+
             if (datosForm.id) {
-                if (tipoActual === 'existencia') await productosAPI.actualizar(datosForm.id, datosForm);
+                if (tipoActual === 'productos') {
+                    const payloadProducto = {
+                        nombre: datosForm.nombre,
+                        sku: datosForm.sku
+                    };
+                    await productosAPI.actualizar(datosForm.id, payloadProducto);
+                }
             } else {
-                if (tipoActual === 'existencia') {
-                    await productosAPI.crear(datosForm);
+                if (tipoActual === 'productos') {
+                    const payloadProducto = {
+                        nombre: datosForm.nombre,
+                        sku: datosForm.sku
+                    };
+                    await productosAPI.crear(payloadProducto);
                 } else {
                     await transaccionesAPI.registrar(formatTransactionData(datosForm));
                 }
@@ -98,7 +149,7 @@ const Main = () => {
     const eliminar = async (id) => {
         if (window.confirm("¿Estás seguro de eliminar este registro?")) {
             try {
-                if (tipoActual === 'existencia') {
+                if (tipoActual === 'productos') {
                     await productosAPI.eliminar(id);
                     cargarDatos();
                     setFeedback({
@@ -158,7 +209,12 @@ const Main = () => {
                     </p>
                 </div>
 
-                <TableSelector tipoActual={tipoActual} onChange={setTipoActual} onAdd={crear} />
+                <TableSelector
+                    tipoActual={tipoActual}
+                    onChange={setTipoActual}
+                    onAdd={crear}
+                    canAdd={tipoActual !== 'existencia'}
+                />
 
                 <div style={{
                     flexGrow: 1, overflowY: 'auto', marginTop: '20px',

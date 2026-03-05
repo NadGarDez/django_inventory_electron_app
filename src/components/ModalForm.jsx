@@ -39,7 +39,7 @@ const ModalForm = ({ isOpen, onClose, tipo, productos, onSave, registroAEditar }
         onSave(formData);
     };
 
-    const esProducto = tipo === 'existencia';
+    const esProducto = tipo === 'productos';
     const esEdicion = !!formData.id; // Determinamos el modo por la existencia del ID
     const colorPrimario = esProducto ? '#3182ce' : (tipo === 'entrada' ? '#38a169' : '#e53e3e');
 

@@ -1,8 +1,12 @@
 import React from 'react';
 
-const TableSelector = ({ tipoActual, onChange, onAdd }) => {
+const TableSelector = ({ tipoActual, onChange, onAdd, canAdd }) => {
     // Paleta de colores idéntica a la de la Tabla para coherencia total
     const colores = {
+        productos: {
+            primario: '#4c51bf',
+            fondo: '#ebf4ff',
+        },
         existencia: {
             primario: '#3182ce', // Azul
             fondo: '#ebf8ff',
@@ -18,6 +22,7 @@ const TableSelector = ({ tipoActual, onChange, onAdd }) => {
     };
 
     const opciones = [
+        { id: 'productos', label: 'Productos' },
         { id: 'existencia', label: 'Existencias' },
         { id: 'entrada', label: 'Entradas' },
         { id: 'salida', label: 'Salidas' }
@@ -68,29 +73,31 @@ const TableSelector = ({ tipoActual, onChange, onAdd }) => {
             </div>
 
             {/* Botón Nuevo Registro al final de la línea */}
-            <button
-                onClick={onAdd}
-                style={{
-                    marginBottom: '1px',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    backgroundColor: colores[tipoActual].primario,
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'opacity 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
-                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-            >
-                <span style={{ fontSize: '16px' }}>+</span> Nuevo Registro
-            </button>
+            {canAdd && (
+                <button
+                    onClick={onAdd}
+                    style={{
+                        marginBottom: '1px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        backgroundColor: colores[tipoActual].primario,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'opacity 0.2s ease',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
+                    onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                    <span style={{ fontSize: '16px' }}>+</span> Nuevo Registro
+                </button>
+            )}
         </div>
     );
 };

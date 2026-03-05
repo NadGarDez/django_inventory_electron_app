@@ -3,6 +3,7 @@ import DataRow from './DataRow';
 
 const Table = ({ data, tipo, editar, eliminar }) => {
     const temas = {
+        productos: { headerBg: '#c3dafe', headerText: '#2c5282', accent: '#4c51bf', rowIdxBg: '#ebf4ff' },
         entrada: { headerBg: '#a4fdebff', headerText: '#234e52', accent: '#38a169', rowIdxBg: '#f0fff4' },
         salida: { headerBg: '#fca3a3ff', headerText: '#742a2a', accent: '#e53e3e', rowIdxBg: '#fff5f5' },
         existencia: { headerBg: '#a5defdff', headerText: '#2a4365', accent: '#3182ce', rowIdxBg: '#ebf8ff' }
@@ -11,11 +12,30 @@ const Table = ({ data, tipo, editar, eliminar }) => {
     const estilo = temas[tipo] || temas.existencia;
 
     const configurarColumnas = () => {
-        let cols = (tipo === 'existencia') 
-            ? [{ key: 'sku', label: 'SKU' }, { key: 'nombre', label: 'Producto' }, { key: 'cantidad', label: 'Stock' }]
-            : [{ key: 'fecha', label: 'Fecha' }, { key: 'producto', label: 'ID del producto' },{ key: 'nombre_producto', label: 'Nbr. del producto' }, { key: 'cantidad', label: 'Cant.' }];
-        
-        return [...cols, { key: 'acciones', label: 'Acciones' }];
+        if (tipo === 'productos') {
+            return [
+                { key: 'sku', label: 'SKU' },
+                { key: 'nombre', label: 'Producto' },
+                { key: 'producto_timestamp', label: 'Actualizado en' },
+                { key: 'acciones', label: 'Acciones' }
+            ];
+        }
+
+        if (tipo === 'existencia') {
+            return [
+                { key: 'sku', label: 'SKU' },
+                { key: 'nombre', label: 'Producto' },
+                { key: 'cantidad', label: 'Stock' },
+                { key: 'ultima_actualizacion', label: 'Última actualización' }
+            ];
+        }
+
+        return [
+            { key: 'fecha', label: 'Fecha y hora' },
+            { key: 'producto', label: 'ID del producto' },
+            { key: 'nombre_producto', label: 'Nbr. del producto' },
+            { key: 'cantidad', label: 'Cant.' }
+        ];
     };
 
     const columnas = configurarColumnas();

@@ -20,15 +20,25 @@ const colores = {
 };
 
 const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) => {
-
-
-
     const formattedRow = useMemo(() => {
-       const newRow = { ...row, fecha: new Date(row.fecha).toLocaleDateString() ?? '', ultima_actualizacion: new Date(row.ultima_actualizacion).toLocaleDateString() ?? ''};
-       return newRow;
-    }, [columnas, row]);
+       const formatDateTime = (value) => {
+           if (value === null || value === undefined || value === '') return '';
+           const date = new Date(value);
+           if (Number.isNaN(date.getTime())) return String(value);
+           return date.toLocaleString();
+       };
 
-    console.log("Rendered Row:", formattedRow);
+       return {
+           ...row,
+           fecha: formatDateTime(row.fecha),
+           ultima_actualizacion: formatDateTime(row.ultima_actualizacion),
+           producto_timestamp: formatDateTime(row.producto_timestamp),
+           cantidad: row.cantidad ?? row.stock_actual ?? 0,
+           stock_actual: row.stock_actual ?? row.cantidad ?? 0,
+           nombre_producto: row.nombre_producto ?? row.nombre ?? '',
+           producto: row.producto ?? row.producto_id ?? ''
+       };
+    }, [columnas, row]);
 
     return (
         <tr className="table-row">
