@@ -1,4 +1,6 @@
-# Getting Started with Create React App
+# Inventario Electron (Frontend)
+
+Aplicación de escritorio para gestión de inventario construida con React + Electron, conectada a una API Django REST.
 
 ## Descarga de compilación para Windows
 
@@ -6,71 +8,88 @@ Puedes descargar la versión compilada para Windows desde este enlace:
 
 - https://drive.google.com/file/d/1XjwffI_stVbR4Q36pZNVDcrIGrOlYgQ1/view?usp=sharing
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Descripción técnica
 
-## Available Scripts
+### Stack
 
-In the project directory, you can run:
+- **UI:** React (Create React App)
+- **Desktop Runtime:** Electron
+- **Cliente HTTP:** Axios
+- **Backend esperado:** Django REST API
 
-### `npm start`
+### Capacidades funcionales
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Pestaña Productos:** CRUD de productos (campos principales: `nombre`, `sku`) y visualización de timestamp de actualización cuando el backend lo provee.
+- **Pestaña Existencias:** vista de solo lectura para consultar stock consolidado.
+- **Pestañas Entradas/Salidas:** registro y consulta de transacciones de inventario.
+- **Feedback UI:** mensajes de éxito/error para operaciones de lectura/escritura.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Endpoints consumidos
 
-### `npm test`
+- `GET/POST/PUT/DELETE /api/productos/`
+- `GET /api/existencias/`
+- `GET/POST /api/transacciones/`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Estructura principal del frontend
 
-### `npm run build`
+- `src/Main.jsx`: orquestación de pestañas, carga de datos y operaciones CRUD.
+- `src/api/api.js`: definición central de llamadas HTTP.
+- `src/components/Table.jsx`: definición de columnas por contexto (productos/existencias/transacciones).
+- `src/components/DataRow.jsx`: normalización/render de celdas y timestamps.
+- `main.js`: bootstrap de la ventana Electron.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Instructivo de uso
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1) Requisitos
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- Node.js 18+ recomendado
+- npm 9+ recomendado
+- Backend Django ejecutándose y accesible por la URL configurada en `src/api/api.js`
 
-### `npm run eject`
+### 2) Instalar dependencias
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+npm install
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 3) Ejecutar frontend en modo desarrollo (web)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```bash
+npm start
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 4) Ejecutar app en Electron (requiere frontend corriendo si estás en modo dev)
 
-## Learn More
+```bash
+npm run electron
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 5) Generar build de producción (React)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm run build
+```
 
-### Code Splitting
+### 6) Compilar instalable/portable para Windows
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+npm run dist:win
+```
 
-### Analyzing the Bundle Size
+Artefactos generados:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- `dist/Inventario 0.1.0.exe`
+- `dist/win-unpacked/`
 
-### Making a Progressive Web App
+## Flujo operativo recomendado
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. Crear/editar productos en **Productos**.
+2. Consultar stock consolidado en **Existencias**.
+3. Registrar movimientos en **Entradas** y **Salidas**.
+4. Volver a **Existencias** para validar impacto del movimiento.
 
-### Advanced Configuration
+## Troubleshooting rápido
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **No aparecen datos:** validar que la API Django esté activa y responda en la URL base configurada.
+- **Campos vacíos en tabla:** confirmar que el backend retorna los campos esperados (`nombre`, `sku`, `cantidad`, `fecha`, `updated_at`, etc.).
+- **Advertencia al abrir .exe en Windows:** esperado si el binario no está firmado digitalmente.
