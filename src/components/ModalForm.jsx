@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrencyDisplay } from '../utils/formatters';
 
-const ModalForm = ({ isOpen, onClose, tipo, productos, onSave, registroAEditar }) => {
+const ModalForm = ({ isOpen, onClose, tipo, productos, onSave, registroAEditar, exchangeRate, showUsdConversion }) => {
     const initialState = {
         nombre: '',
         sku: '',
@@ -135,7 +135,7 @@ const ModalForm = ({ isOpen, onClose, tipo, productos, onSave, registroAEditar }
                             <div style={groupStyle}>
                                 <label style={labelStyle}>Precio de referencia</label>
                                 <input
-                                    value={productoSeleccionado ? formatCurrency(precioReferencia) : 'Seleccione un producto'}
+                                    value={productoSeleccionado ? formatCurrencyDisplay(precioReferencia, { exchangeRate, showUsdConversion }) : 'Seleccione un producto'}
                                     disabled
                                     style={{ ...inputStyle, backgroundColor: '#f7fafc', color: '#4a5568' }}
                                 />

@@ -20,7 +20,7 @@ const colores = {
     editar: '#3182ce'
 };
 
-const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete }) => {
+const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete, exchangeRate, showUsdConversion }) => {
     const formattedRow = useMemo(() => {
         return {
             ...row,
@@ -83,6 +83,8 @@ const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete }) => {
                         key={`${formattedRow.id || index}-${col.key}`}
                         value={formattedRow[col.key]}
                         format={col.format}
+                        exchangeRate={exchangeRate}
+                        showUsdConversion={showUsdConversion}
                     />
                 )
             ))}

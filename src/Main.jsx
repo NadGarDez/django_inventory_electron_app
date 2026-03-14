@@ -2,10 +2,24 @@ import React, { useEffect, useState } from 'react';
 import Table from './components/Table';
 import TableSelector from './components/TableSelector';
 import ModalForm from './components/ModalForm';
+import ExchangeRateModal from './components/ExchangeRateModal';
 import { productosAPI, transaccionesAPI, existenciasAPI } from './api/api';
 import FeedbackModal from './components/FeedBackModal';
-import { formatCurrency, toNumber } from './utils/formatters';
+import { formatCurrencyDisplay, toNumber } from './utils/formatters';
 import companyLogo from './assets/company-logo.png';
+
+const DEFAULT_EXCHANGE_RATE = 446.88;
+const EXCHANGE_RATE_STORAGE_KEY = 'inventario.exchangeRate';
+
+const getStoredExchangeRate = () => {
+    if (typeof window === 'undefined') {
+        return DEFAULT_EXCHANGE_RATE;
+    }
+
+    const storedValue = window.localStorage.getItem(EXCHANGE_RATE_STORAGE_KEY);
+    const parsedValue = Number(storedValue);
+    return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : DEFAULT_EXCHANGE_RATE;
+};
 
 const normalizeListResponse = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -44,7 +58,7 @@ const formatTransactionData = (rawTransaction) => ({
     observacion: rawTransaction.observacion ?? ''
 });
 
-const buildResumenTarjetas = (tipoActual, resumen) => {
+const buildResumenTarjetas = (tipoActual, resumen, exchangeRate, showUsdConversion) => {
     if (!resumen) {
         return [];
     }
@@ -53,8 +67,16 @@ const buildResumenTarjetas = (tipoActual, resumen) => {
         return [
             { label: 'Total productos', value: resumen.total_productos ?? 0, accent: '#4c51bf' },
             { label: 'Total unidades', value: resumen.total_unidades ?? 0, accent: '#3182ce' },
-            { label: 'Total compra', value: formatCurrency(resumen.valor_total_inventario_compra), accent: '#2f855a' },
-            { label: 'Total venta', value: formatCurrency(resumen.valor_total_inventario_venta), accent: '#c05621' }
+            {
+                label: 'Total compra',
+                value: formatCurrencyDisplay(resumen.valor_total_inventario_compra, { exchangeRate, showUsdConversion }),
+                accent: '#2f855a'
+            },
+            {
+                label: 'Total venta',
+                value: formatCurrencyDisplay(resumen.valor_total_inventario_venta, { exchangeRate, showUsdConversion }),
+                accent: '#c05621'
+            }
         ];
     }
 
@@ -62,7 +84,7 @@ const buildResumenTarjetas = (tipoActual, resumen) => {
         return [
             {
                 label: tipoActual === 'entrada' ? 'Total entradas' : 'Total salidas',
-                value: formatCurrency(resumen.total_movimientos),
+                value: formatCurrencyDisplay(resumen.total_movimientos, { exchangeRate, showUsdConversion }),
                 accent: tipoActual === 'entrada' ? '#2f855a' : '#c53030'
             },
             { label: 'Cantidad acumulada', value: resumen.total_unidades ?? 0, accent: '#4c51bf' }
@@ -80,6 +102,9 @@ const Main = () => {
     const [estaCargando, setEstaCargando] = useState(false);
     const [activeRegistro, setActiveRegistro] = useState(null);
     const [resumenActual, setResumenActual] = useState(null);
+    const [exchangeRate, setExchangeRate] = useState(() => getStoredExchangeRate());
+    const [showUsdConversion, setShowUsdConversion] = useState(false);
+    const [mostrarModalTasa, setMostrarModalTasa] = useState(false);
     const [feedback, setFeedback] = useState({
         isOpen: false,
         type: 'success',
@@ -88,6 +113,12 @@ const Main = () => {
     });
 
     const closeFeedback = () => setFeedback((prev) => ({ ...prev, isOpen: false }));
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(EXCHANGE_RATE_STORAGE_KEY, String(exchangeRate));
+        }
+    }, [exchangeRate]);
 
     const cargarDatos = async () => {
         setEstaCargando(true);
@@ -218,7 +249,19 @@ const Main = () => {
         setMostrarModal(true);
     };
 
-    const tarjetasResumen = buildResumenTarjetas(tipoActual, resumenActual);
+    const guardarTasa = (nextExchangeRate) => {
+        setExchangeRate(nextExchangeRate);
+        setMostrarModalTasa(false);
+        setFeedback({
+            isOpen: true,
+            type: 'success',
+            title: 'Tasa actualizada',
+            subtitle: `La tasa local quedó en ${nextExchangeRate.toFixed(2)} VES por USD.`
+        });
+    };
+
+    const tarjetasResumen = buildResumenTarjetas(tipoActual, resumenActual, exchangeRate, showUsdConversion);
+    const currentCurrencyMode = showUsdConversion ? 'USD + VES' : 'VES';
 
     return (
         <div style={{
@@ -245,6 +288,15 @@ const Main = () => {
                 isLoading={estaCargando}
                 productos={productosParaSelect}
                 registroAEditar={activeRegistro}
+                exchangeRate={exchangeRate}
+                showUsdConversion={showUsdConversion}
+            />
+
+            <ExchangeRateModal
+                isOpen={mostrarModalTasa}
+                onClose={() => setMostrarModalTasa(false)}
+                exchangeRate={exchangeRate}
+                onSave={guardarTasa}
             />
 
             <div style={{
@@ -260,24 +312,24 @@ const Main = () => {
             }}>
                 <div style={{
                     flexShrink: 0,
-                    marginBottom: '20px',
-                    padding: '4px 0 12px',
+                    marginBottom: '22px',
+                    padding: '8px 0 14px',
                     borderBottom: '1px solid #edf2f7',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '20px',
+                    gap: '24px',
                     flexWrap: 'wrap'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '18px', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '22px', textAlign: 'left' }}>
                         <div style={{
-                            width: '88px',
-                            height: '88px',
-                            borderRadius: '22px',
+                            width: '112px',
+                            height: '112px',
+                            borderRadius: '26px',
                             overflow: 'hidden',
                             backgroundColor: '#f8fafc',
                             border: '1px solid #e2e8f0',
-                            boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+                            boxShadow: '0 16px 30px rgba(15, 23, 42, 0.10)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -294,19 +346,19 @@ const Main = () => {
                             <h2 style={{
                                 margin: 0,
                                 color: '#1a202c',
-                                fontSize: '32px',
-                                lineHeight: 1.05,
-                                fontWeight: 800,
-                                letterSpacing: '-0.04em'
+                                fontSize: '40px',
+                                lineHeight: 1,
+                                fontWeight: 900,
+                                letterSpacing: '-0.05em'
                             }}>
                                 La Gran Esquina Paramaconi
                             </h2>
                             <p style={{
-                                margin: '8px 0 0',
+                                margin: '10px 0 0',
                                 color: '#4a5568',
-                                fontSize: '15px',
-                                fontWeight: 600,
-                                letterSpacing: '0.02em',
+                                fontSize: '17px',
+                                fontWeight: 700,
+                                letterSpacing: '0.05em',
                                 textTransform: 'uppercase'
                             }}>
                                 Sistema de inventario
@@ -314,30 +366,93 @@ const Main = () => {
                         </div>
                     </div>
 
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        marginTop: '12px',
-                        padding: '8px 14px',
-                        backgroundColor: '#f7fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '999px',
-                        color: '#2d3748',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)'
-                    }}>
-                        <span style={{
-                            width: '10px',
-                            height: '10px',
-                            borderRadius: '50%',
-                            backgroundColor: '#38a169',
-                            boxShadow: '0 0 0 4px rgba(56, 161, 105, 0.12)'
-                        }} />
-                        <span>Conectado a Django API en {tipoActual.toUpperCase()}</span>
-                        <span style={{ color: '#a0aec0' }}>|</span>
-                        <span style={{ color: '#2b6cb0' }}>Moneda: VES</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '7px 14px',
+                            backgroundColor: '#f7fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '999px',
+                            color: '#2d3748',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)'
+                        }}>
+                            <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: '#38a169',
+                                boxShadow: '0 0 0 3px rgba(56, 161, 105, 0.10)'
+                            }} />
+                            <span>Conectado a Django API en {tipoActual.toUpperCase()}</span>
+                            <span style={{ color: '#a0aec0' }}>|</span>
+                            <span style={{ color: '#2b6cb0' }}>Modo: {currentCurrencyMode}</span>
+                            <span style={{ color: '#a0aec0' }}>|</span>
+                            <label style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '7px',
+                                cursor: 'pointer',
+                                color: '#4a5568',
+                                userSelect: 'none'
+                            }}>
+                                <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em'
+                                }}>
+                                    USD
+                                </span>
+                                <span style={{
+                                    position: 'relative',
+                                    width: '34px',
+                                    height: '18px',
+                                    borderRadius: '999px',
+                                    backgroundColor: showUsdConversion ? '#2b6cb0' : '#cbd5e0',
+                                    transition: 'background-color 0.2s ease'
+                                }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showUsdConversion}
+                                        onChange={(event) => setShowUsdConversion(event.target.checked)}
+                                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                                    />
+                                    <span style={{
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: showUsdConversion ? '18px' : '2px',
+                                        width: '14px',
+                                        height: '14px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#ffffff',
+                                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.2)',
+                                        transition: 'left 0.2s ease'
+                                    }} />
+                                </span>
+                            </label>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setMostrarModalTasa(true)}
+                            style={{
+                                border: '1px solid #bee3f8',
+                                backgroundColor: '#ebf8ff',
+                                color: '#2b6cb0',
+                                borderRadius: '999px',
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)'
+                            }}
+                        >
+                            1 USD = {exchangeRate.toFixed(2)} VES
+                        </button>
                     </div>
                 </div>
 
@@ -407,6 +522,8 @@ const Main = () => {
                         editar={editar}
                         eliminar={eliminar}
                         resumen={resumenActual}
+                        exchangeRate={exchangeRate}
+                        showUsdConversion={showUsdConversion}
                     />
                 </div>
 

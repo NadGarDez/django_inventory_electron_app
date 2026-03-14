@@ -1,8 +1,8 @@
 import React from 'react';
 import DataRow from './DataRow';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrencyDisplay } from '../utils/formatters';
 
-const Table = ({ data, tipo, editar, eliminar, resumen }) => {
+const Table = ({ data, tipo, editar, eliminar, resumen, exchangeRate, showUsdConversion }) => {
     const temas = {
         productos: { headerBg: '#c3dafe', headerText: '#2c5282', accent: '#4c51bf', rowIdxBg: '#ebf4ff' },
         entrada: { headerBg: '#a4fdebff', headerText: '#234e52', accent: '#38a169', rowIdxBg: '#f0fff4' },
@@ -78,6 +78,8 @@ const Table = ({ data, tipo, editar, eliminar, resumen }) => {
                             index={index}
                             columnas={columnas}
                             estilo={estilo}
+                            exchangeRate={exchangeRate}
+                            showUsdConversion={showUsdConversion}
                             onEdit={(row) => editar(row)}
                             onDelete={(id) => eliminar(id)}
                         />
@@ -109,7 +111,11 @@ const Table = ({ data, tipo, editar, eliminar, resumen }) => {
                                 }
 
                                 if (col.key === 'valor_movimiento') {
-                                    return <td key={col.key} style={summaryValueStyle}>{formatCurrency(resumen.total_movimientos)}</td>;
+                                    return (
+                                        <td key={col.key} style={summaryValueStyle}>
+                                            {formatCurrencyDisplay(resumen.total_movimientos, { exchangeRate, showUsdConversion })}
+                                        </td>
+                                    );
                                 }
 
                                 return <td key={col.key} style={summaryEmptyStyle}> </td>;

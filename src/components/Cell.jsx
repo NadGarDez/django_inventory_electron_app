@@ -1,20 +1,20 @@
 import React from 'react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrencyDisplay } from '../utils/formatters';
 
-const formatValue = (value, format) => {
+const formatValue = (value, format, exchangeRate, showUsdConversion) => {
   if (value === null || value === undefined || value === '') return '—';
 
   if (format === 'currency') {
-    return formatCurrency(value);
+    return formatCurrencyDisplay(value, { exchangeRate, showUsdConversion });
   }
 
   return value;
 };
 
-const Cell = ({ value, format }) => {
+const Cell = ({ value, format, exchangeRate, showUsdConversion }) => {
   return (
     <td style={{ border: '1px solid #dee2e6', padding: '8px 10px', textAlign: format === 'currency' ? 'right' : 'left', whiteSpace: 'nowrap' }}>
-      {formatValue(value, format)}
+      {formatValue(value, format, exchangeRate, showUsdConversion)}
     </td>
   );
 };
