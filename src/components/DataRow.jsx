@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import Cell from './Cell';
+import { formatDateTime } from '../utils/formatters';
 
 // Estilos unificados para botones
 const btnAccionStyle = {
@@ -19,26 +20,25 @@ const colores = {
     editar: '#3182ce'
 };
 
-const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) => {
+const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete }) => {
     const formattedRow = useMemo(() => {
-       const formatDateTime = (value) => {
-           if (value === null || value === undefined || value === '') return '';
-           const date = new Date(value);
-           if (Number.isNaN(date.getTime())) return String(value);
-           return date.toLocaleString();
-       };
-
-       return {
-           ...row,
-           fecha: formatDateTime(row.fecha),
-           ultima_actualizacion: formatDateTime(row.ultima_actualizacion),
-           producto_timestamp: formatDateTime(row.producto_timestamp),
-           cantidad: row.cantidad ?? row.stock_actual ?? 0,
-           stock_actual: row.stock_actual ?? row.cantidad ?? 0,
-           nombre_producto: row.nombre_producto ?? row.nombre ?? '',
-           producto: row.producto ?? row.producto_id ?? ''
-       };
-    }, [columnas, row]);
+        return {
+            ...row,
+            fecha: formatDateTime(row.fecha),
+            ultima_actualizacion: formatDateTime(row.ultima_actualizacion),
+            producto_timestamp: formatDateTime(row.producto_timestamp),
+            cantidad: row.cantidad ?? row.stock_actual ?? 0,
+            stock_actual: row.stock_actual ?? row.cantidad ?? 0,
+            nombre_producto: row.nombre_producto ?? row.nombre ?? '',
+            producto: row.producto ?? '',
+            precio_compra_actual: row.precio_compra_actual ?? '0.00',
+            precio_venta_actual: row.precio_venta_actual ?? '0.00',
+            valor_inventario_compra: row.valor_inventario_compra ?? '0.00',
+            valor_inventario_venta: row.valor_inventario_venta ?? '0.00',
+            precio_unitario_historico: row.precio_unitario_historico ?? '0.00',
+            valor_movimiento: row.valor_movimiento ?? '0.00'
+        };
+    }, [row]);
 
     return (
         <tr className="table-row">
@@ -82,6 +82,7 @@ const DataRow = ({ row, index, columnas, estilo, onEdit, onDelete , alCrear}) =>
                     <Cell
                         key={`${formattedRow.id || index}-${col.key}`}
                         value={formattedRow[col.key]}
+                        format={col.format}
                     />
                 )
             ))}

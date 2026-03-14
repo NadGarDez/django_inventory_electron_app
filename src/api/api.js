@@ -50,7 +50,6 @@ export const transaccionesAPI = {
     // Listar historial de movimientos
     listar: async (type) => {
         const response = await api.get('/transacciones/?tipo=' + type);
-        console.log("Transacciones API response:", response);
         return response.data;
     },
 
@@ -66,7 +65,11 @@ export const transaccionesAPI = {
 export const existenciasAPI = {
     listar: async () => {
         const response = await api.get('/existencias/');
-        console.log("Existencias obtenidas:", response);
+        return response.data;
+    },
+
+    resumen: async () => {
+        const response = await api.get('/existencias/resumen/');
         return response.data;
     }
 };

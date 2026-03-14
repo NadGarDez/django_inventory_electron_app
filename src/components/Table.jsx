@@ -1,7 +1,8 @@
 import React from 'react';
 import DataRow from './DataRow';
+import { formatCurrency } from '../utils/formatters';
 
-const Table = ({ data, tipo, editar, eliminar }) => {
+const Table = ({ data, tipo, editar, eliminar, resumen }) => {
     const temas = {
         productos: { headerBg: '#c3dafe', headerText: '#2c5282', accent: '#4c51bf', rowIdxBg: '#ebf4ff' },
         entrada: { headerBg: '#a4fdebff', headerText: '#234e52', accent: '#38a169', rowIdxBg: '#f0fff4' },
@@ -16,6 +17,8 @@ const Table = ({ data, tipo, editar, eliminar }) => {
             return [
                 { key: 'sku', label: 'SKU' },
                 { key: 'nombre', label: 'Producto' },
+                { key: 'precio_compra_actual', label: 'Precio compra', format: 'currency' },
+                { key: 'precio_venta_actual', label: 'Precio venta', format: 'currency' },
                 { key: 'producto_timestamp', label: 'Actualizado en' },
                 { key: 'acciones', label: 'Acciones' }
             ];
@@ -26,6 +29,8 @@ const Table = ({ data, tipo, editar, eliminar }) => {
                 { key: 'sku', label: 'SKU' },
                 { key: 'nombre', label: 'Producto' },
                 { key: 'cantidad', label: 'Stock' },
+                { key: 'valor_inventario_compra', label: 'Costo total compra', format: 'currency' },
+                { key: 'valor_inventario_venta', label: 'Costo total venta', format: 'currency' },
                 { key: 'ultima_actualizacion', label: 'Última actualización' }
             ];
         }
@@ -34,15 +39,18 @@ const Table = ({ data, tipo, editar, eliminar }) => {
             { key: 'fecha', label: 'Fecha y hora' },
             { key: 'producto', label: 'ID del producto' },
             { key: 'nombre_producto', label: 'Nbr. del producto' },
-            { key: 'cantidad', label: 'Cant.' }
+            { key: 'cantidad', label: 'Cant.' },
+            { key: 'precio_unitario_historico', label: 'Precio unitario', format: 'currency' },
+            { key: 'valor_movimiento', label: 'Valor movimiento', format: 'currency' }
         ];
     };
 
     const columnas = configurarColumnas();
+    const mostrarFilaTotales = (tipo === 'entrada' || tipo === 'salida') && resumen;
 
     return (
-        <div style={{ fontFamily: 'sans-serif' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <div style={{ fontFamily: 'sans-serif', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '980px', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                 <thead>
                     <tr>
                         <th style={{
@@ -74,18 +82,68 @@ const Table = ({ data, tipo, editar, eliminar }) => {
                             onDelete={(id) => eliminar(id)}
                         />
                     ))}
+                    {mostrarFilaTotales && (
+                        <tr>
+                            <td style={{
+                                backgroundColor: estilo.rowIdxBg,
+                                border: `1px solid ${estilo.accent}44`,
+                                textAlign: 'center',
+                                fontSize: '11px',
+                                color: estilo.accent,
+                                fontWeight: 'bold',
+                                position: 'sticky',
+                                left: 0,
+                                zIndex: 1,
+                                minWidth: '45px'
+                            }}>
+                                Σ
+                            </td>
+
+                            {columnas.map((col) => {
+                                if (col.key === 'fecha') {
+                                    return <td key={col.key} style={summaryLabelStyle}>Total</td>;
+                                }
+
+                                if (col.key === 'cantidad') {
+                                    return <td key={col.key} style={summaryValueStyle}>{resumen.total_unidades ?? 0}</td>;
+                                }
+
+                                if (col.key === 'valor_movimiento') {
+                                    return <td key={col.key} style={summaryValueStyle}>{formatCurrency(resumen.total_movimientos)}</td>;
+                                }
+
+                                return <td key={col.key} style={summaryEmptyStyle}> </td>;
+                            })}
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>
     );
 };
 
-// Estilos compartidos
-const btnAccionStyle = {
-    cursor: 'pointer', border: 'none', borderRadius: '4px',
-    padding: '6px 10px', fontSize: '14px', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+const summaryBaseStyle = {
+    border: '1px solid #dee2e6',
+    padding: '10px 12px',
+    backgroundColor: '#f8fafc',
+    fontWeight: 700,
+    whiteSpace: 'nowrap'
+};
+
+const summaryLabelStyle = {
+    ...summaryBaseStyle,
+    color: '#2d3748'
+};
+
+const summaryValueStyle = {
+    ...summaryBaseStyle,
+    color: '#1a202c',
+    textAlign: 'right'
+};
+
+const summaryEmptyStyle = {
+    ...summaryBaseStyle,
+    color: 'transparent'
 };
 
 export default Table;

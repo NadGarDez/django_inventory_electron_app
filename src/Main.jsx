@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Table from './components/Table';
 import TableSelector from './components/TableSelector';
 import ModalForm from './components/ModalForm';
-import { productosAPI , transaccionesAPI, existenciasAPI} from './api/api';
+import { productosAPI, transaccionesAPI, existenciasAPI } from './api/api';
 import FeedbackModal from './components/FeedBackModal';
+import { formatCurrency, toNumber } from './utils/formatters';
+import companyLogo from './assets/company-logo.png';
 
 const normalizeListResponse = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -13,6 +15,7 @@ const normalizeListResponse = (payload) => {
 
 const normalizeProducto = (item) => ({
     ...item,
+    stock_actual: item?.stock_actual ?? 0,
     producto_timestamp:
         item?.updated_at ??
         item?.ultima_actualizacion ??
@@ -24,6 +27,8 @@ const normalizeProducto = (item) => ({
 const normalizeExistencia = (item) => ({
     ...item,
     cantidad: item?.cantidad ?? item?.stock_actual ?? 0,
+    valor_inventario_compra: item?.valor_inventario_compra ?? '0.00',
+    valor_inventario_venta: item?.valor_inventario_venta ?? '0.00',
     ultima_actualizacion:
         item?.ultima_actualizacion ??
         item?.updated_at ??
@@ -32,14 +37,39 @@ const normalizeExistencia = (item) => ({
         ''
 });
 
-const formatTransactionData = (rawTransaction) => {
-    return {
-        id: rawTransaction.id ?? '',
-        producto: rawTransaction.producto_id,
-        cantidad: rawTransaction.cantidad,
-        tipo: rawTransaction.tipo_transaccion,
-        fecha: rawTransaction.fecha ?? '',
-    };
+const formatTransactionData = (rawTransaction) => ({
+    producto: rawTransaction.producto,
+    cantidad: rawTransaction.cantidad,
+    tipo: rawTransaction.tipo,
+    observacion: rawTransaction.observacion ?? ''
+});
+
+const buildResumenTarjetas = (tipoActual, resumen) => {
+    if (!resumen) {
+        return [];
+    }
+
+    if (tipoActual === 'existencia') {
+        return [
+            { label: 'Total productos', value: resumen.total_productos ?? 0, accent: '#4c51bf' },
+            { label: 'Total unidades', value: resumen.total_unidades ?? 0, accent: '#3182ce' },
+            { label: 'Total compra', value: formatCurrency(resumen.valor_total_inventario_compra), accent: '#2f855a' },
+            { label: 'Total venta', value: formatCurrency(resumen.valor_total_inventario_venta), accent: '#c05621' }
+        ];
+    }
+
+    if (tipoActual === 'entrada' || tipoActual === 'salida') {
+        return [
+            {
+                label: tipoActual === 'entrada' ? 'Total entradas' : 'Total salidas',
+                value: formatCurrency(resumen.total_movimientos),
+                accent: tipoActual === 'entrada' ? '#2f855a' : '#c53030'
+            },
+            { label: 'Cantidad acumulada', value: resumen.total_unidades ?? 0, accent: '#4c51bf' }
+        ];
+    }
+
+    return [];
 };
 
 const Main = () => {
@@ -49,7 +79,7 @@ const Main = () => {
     const [mostrarModal, setMostrarModal] = useState(false);
     const [estaCargando, setEstaCargando] = useState(false);
     const [activeRegistro, setActiveRegistro] = useState(null);
-
+    const [resumenActual, setResumenActual] = useState(null);
     const [feedback, setFeedback] = useState({
         isOpen: false,
         type: 'success',
@@ -57,7 +87,7 @@ const Main = () => {
         subtitle: ''
     });
 
-    const closeFeedback = () => setFeedback({ ...feedback, isOpen: false });
+    const closeFeedback = () => setFeedback((prev) => ({ ...prev, isOpen: false }));
 
     const cargarDatos = async () => {
         setEstaCargando(true);
@@ -67,23 +97,34 @@ const Main = () => {
                 const productos = normalizeListResponse(resultado).map(normalizeProducto);
                 setDatos(productos);
                 setProductosParaSelect(productos);
+                setResumenActual(null);
             } else if (tipoActual === 'existencia') {
-                const resultado = await existenciasAPI.listar();
+                const [resultado, resumen] = await Promise.all([
+                    existenciasAPI.listar(),
+                    existenciasAPI.resumen()
+                ]);
                 const existencias = normalizeListResponse(resultado).map(normalizeExistencia);
                 setDatos(existencias);
-            } else if (tipoActual === 'entrada' || tipoActual === 'salida') {
+                setResumenActual(resumen);
+            } else {
                 const [resultado, productos] = await Promise.all([
                     transaccionesAPI.listar(tipoActual.toUpperCase()),
                     productosAPI.listar()
                 ]);
-                setDatos(normalizeListResponse(resultado));
-                setProductosParaSelect(normalizeListResponse(productos).map(normalizeProducto));
+                const transacciones = normalizeListResponse(resultado);
+                const productosNormalizados = normalizeListResponse(productos).map(normalizeProducto);
+                setDatos(transacciones);
+                setProductosParaSelect(productosNormalizados);
+                setResumenActual({
+                    total_movimientos: transacciones.reduce((total, item) => total + toNumber(item?.valor_movimiento), 0),
+                    total_unidades: transacciones.reduce((total, item) => total + toNumber(item?.cantidad), 0)
+                });
             }
         } catch (error) {
             setFeedback({
                 isOpen: true,
                 type: 'error',
-                title: 'Error de Lectura',
+                title: 'Error de lectura',
                 subtitle: `No se pudieron obtener los datos de ${tipoActual}. Verifique la API.`
             });
         } finally {
@@ -95,7 +136,6 @@ const Main = () => {
         cargarDatos();
     }, [tipoActual]);
 
-    // 3. Manejar Guardado (Muestra ÉXITO o ERROR)
     const handleSave = async (datosForm) => {
         setEstaCargando(true);
         try {
@@ -104,41 +144,37 @@ const Main = () => {
                 return;
             }
 
-            if (datosForm.id) {
-                if (tipoActual === 'productos') {
-                    const payloadProducto = {
-                        nombre: datosForm.nombre,
-                        sku: datosForm.sku
-                    };
-                    await productosAPI.actualizar(datosForm.id, payloadProducto);
-                }
+            if (datosForm.id && tipoActual === 'productos') {
+                await productosAPI.actualizar(datosForm.id, {
+                    nombre: datosForm.nombre,
+                    sku: datosForm.sku,
+                    precio_compra_actual: datosForm.precio_compra_actual,
+                    precio_venta_actual: datosForm.precio_venta_actual
+                });
+            } else if (tipoActual === 'productos') {
+                await productosAPI.crear({
+                    nombre: datosForm.nombre,
+                    sku: datosForm.sku,
+                    precio_compra_actual: datosForm.precio_compra_actual,
+                    precio_venta_actual: datosForm.precio_venta_actual
+                });
             } else {
-                if (tipoActual === 'productos') {
-                    const payloadProducto = {
-                        nombre: datosForm.nombre,
-                        sku: datosForm.sku
-                    };
-                    await productosAPI.crear(payloadProducto);
-                } else {
-                    await transaccionesAPI.registrar(formatTransactionData(datosForm));
-                }
+                await transaccionesAPI.registrar(formatTransactionData(datosForm));
             }
-            
-            setMostrarModal(false);
-            await cargarDatos(); 
 
+            setMostrarModal(false);
+            await cargarDatos();
             setFeedback({
                 isOpen: true,
                 type: 'success',
-                title: '¡Guardado Correctamente!',
+                title: 'Guardado correctamente',
                 subtitle: 'La operación se sincronizó correctamente.'
             });
-
         } catch (error) {
             setFeedback({
                 isOpen: true,
                 type: 'error',
-                title: 'Error al Procesar',
+                title: 'Error al procesar',
                 subtitle: 'Hubo un problema al intentar guardar los cambios en la base de datos.'
             });
         } finally {
@@ -147,39 +183,53 @@ const Main = () => {
     };
 
     const eliminar = async (id) => {
-        if (window.confirm("¿Estás seguro de eliminar este registro?")) {
-            try {
-                if (tipoActual === 'productos') {
-                    await productosAPI.eliminar(id);
-                    cargarDatos();
-                    setFeedback({
-                        isOpen: true,
-                        type: 'success',
-                        title: 'Registro Eliminado',
-                        subtitle: 'El ítem ha sido borrado definitivamente.'
-                    });
-                }
-            } catch (error) {
+        if (!window.confirm('¿Estás seguro de eliminar este registro?')) {
+            return;
+        }
+
+        try {
+            if (tipoActual === 'productos') {
+                await productosAPI.eliminar(id);
+                await cargarDatos();
                 setFeedback({
                     isOpen: true,
-                    type: 'error',
-                    title: 'Error de Eliminación',
-                    subtitle: 'No se tiene permisos o el registro no existe.'
+                    type: 'success',
+                    title: 'Registro eliminado',
+                    subtitle: 'El ítem ha sido borrado definitivamente.'
                 });
             }
+        } catch (error) {
+            setFeedback({
+                isOpen: true,
+                type: 'error',
+                title: 'Error de eliminación',
+                subtitle: 'No se tienen permisos o el registro no existe.'
+            });
         }
     };
 
-    const editar = (row) => { setActiveRegistro(row); setMostrarModal(true); };
-    const crear = () => { setActiveRegistro(null); setMostrarModal(true); };
+    const editar = (row) => {
+        setActiveRegistro(row);
+        setMostrarModal(true);
+    };
+
+    const crear = () => {
+        setActiveRegistro(null);
+        setMostrarModal(true);
+    };
+
+    const tarjetasResumen = buildResumenTarjetas(tipoActual, resumenActual);
 
     return (
         <div style={{
-            display: 'flex', justifyContent: 'center', alignItems: 'center',
-            height: '100vh', backgroundColor: '#1a202c', overflow: 'hidden'
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            backgroundColor: '#1a202c',
+            overflow: 'hidden'
         }}>
-            {/* COMPONENTE DE FEEDBACK CONFIGURABLE */}
-            <FeedbackModal 
+            <FeedbackModal
                 isOpen={feedback.isOpen}
                 onClose={closeFeedback}
                 type={feedback.type}
@@ -198,15 +248,97 @@ const Main = () => {
             />
 
             <div style={{
-                width: '80%', maxWidth: '1100px', maxHeight: '85vh',
-                backgroundColor: '#fff', padding: '30px', borderRadius: '12px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column'
+                width: '88%',
+                maxWidth: '1380px',
+                maxHeight: '88vh',
+                backgroundColor: '#fff',
+                padding: '30px',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                display: 'flex',
+                flexDirection: 'column'
             }}>
-                <div style={{ flexShrink: 0, marginBottom: '20px' }}>
-                    <h2 style={{ margin: 0, color: '#2d3748', fontSize: '24px' }}>Sistema de Inventario</h2>
-                    <p style={{ margin: '5px 0 0', color: '#718096', fontSize: '14px' }}>
-                        Conectado a Django API en {tipoActual.toUpperCase()}
-                    </p>
+                <div style={{
+                    flexShrink: 0,
+                    marginBottom: '20px',
+                    padding: '4px 0 12px',
+                    borderBottom: '1px solid #edf2f7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '20px',
+                    flexWrap: 'wrap'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '18px', textAlign: 'left' }}>
+                        <div style={{
+                            width: '88px',
+                            height: '88px',
+                            borderRadius: '22px',
+                            overflow: 'hidden',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 12px 24px rgba(15, 23, 42, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                        }}>
+                            <img
+                                src={companyLogo}
+                                alt="Logo de La Gran Esquina Paramaconi"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        </div>
+
+                        <div style={{ textAlign: 'left' }}>
+                            <h2 style={{
+                                margin: 0,
+                                color: '#1a202c',
+                                fontSize: '32px',
+                                lineHeight: 1.05,
+                                fontWeight: 800,
+                                letterSpacing: '-0.04em'
+                            }}>
+                                La Gran Esquina Paramaconi
+                            </h2>
+                            <p style={{
+                                margin: '8px 0 0',
+                                color: '#4a5568',
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                letterSpacing: '0.02em',
+                                textTransform: 'uppercase'
+                            }}>
+                                Sistema de inventario
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginTop: '12px',
+                        padding: '8px 14px',
+                        backgroundColor: '#f7fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '999px',
+                        color: '#2d3748',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)'
+                    }}>
+                        <span style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            backgroundColor: '#38a169',
+                            boxShadow: '0 0 0 4px rgba(56, 161, 105, 0.12)'
+                        }} />
+                        <span>Conectado a Django API en {tipoActual.toUpperCase()}</span>
+                        <span style={{ color: '#a0aec0' }}>|</span>
+                        <span style={{ color: '#2b6cb0' }}>Moneda: VES</span>
+                    </div>
                 </div>
 
                 <TableSelector
@@ -216,28 +348,79 @@ const Main = () => {
                     canAdd={tipoActual !== 'existencia'}
                 />
 
+                {tarjetasResumen.length > 0 && (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: '12px',
+                        marginTop: '18px'
+                    }}>
+                        {tarjetasResumen.map((card) => (
+                            <div
+                                key={card.label}
+                                style={{
+                                    backgroundColor: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderLeft: `4px solid ${card.accent || '#4c51bf'}`,
+                                    borderRadius: '10px',
+                                    padding: '14px 16px'
+                                }}
+                            >
+                                <div style={{ fontSize: '11px', color: '#718096', textTransform: 'uppercase', fontWeight: 700 }}>
+                                    {card.label}
+                                </div>
+                                <div style={{ fontSize: '20px', color: '#1a202c', fontWeight: 700, marginTop: '6px' }}>
+                                    {card.value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div style={{
-                    flexGrow: 1, overflowY: 'auto', marginTop: '20px',
-                    border: '1px solid #edf2f7', borderRadius: '4px', position: 'relative'
+                    flexGrow: 1,
+                    overflow: 'auto',
+                    marginTop: '20px',
+                    border: '1px solid #edf2f7',
+                    borderRadius: '4px',
+                    position: 'relative'
                 }}>
                     {estaCargando && (
                         <div style={{
-                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                            backgroundColor: 'rgba(255,255,255,0.7)', display: 'flex',
-                            justifyContent: 'center', alignItems: 'center', zIndex: 1
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(255,255,255,0.7)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1
                         }}>
                             Cargando...
                         </div>
                     )}
-                    <Table data={datos} tipo={tipoActual} editar={editar} eliminar={eliminar} />
+                    <Table
+                        data={datos}
+                        tipo={tipoActual}
+                        editar={editar}
+                        eliminar={eliminar}
+                        resumen={resumenActual}
+                    />
                 </div>
 
                 <div style={{
-                    marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #edf2f7',
-                    display: 'flex', justifyContent: 'space-between', color: '#a0aec0', fontSize: '12px'
+                    marginTop: '20px',
+                    paddingTop: '15px',
+                    borderTop: '1px solid #edf2f7',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    color: '#a0aec0',
+                    fontSize: '12px'
                 }}>
                     <span>Status: Conectado</span>
-                    <span>{datos.length} registros en base de datos</span>
+                    <span>Registros mostrados: {datos.length}</span>
                 </div>
             </div>
         </div>
